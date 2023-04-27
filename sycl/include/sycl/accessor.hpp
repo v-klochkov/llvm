@@ -1145,7 +1145,9 @@ protected:
   // range and offset are not supported.
   void __init_esimd(ConcreteASPtrType Ptr) {
     MData = Ptr;
+#ifdef __ESIMD_FORCE_STATELESS_MEM
     detail::loop<AdjustedDim>([&, this](size_t I) { getMemoryRange()[I] = 0; });
+#endif
   }
 
   ConcreteASPtrType getQualifiedPtr() const noexcept { return MData; }
