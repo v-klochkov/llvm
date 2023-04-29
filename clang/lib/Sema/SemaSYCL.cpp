@@ -85,9 +85,15 @@ static bool isSyclType(QualType Ty, SYCLTypeAttr::SYCLType TypeName) {
 }
 
 static bool isSyclAccessorType(QualType Ty) {
-  return isSyclType(Ty, SYCLTypeAttr::accessor) ||
-         isSyclType(Ty, SYCLTypeAttr::local_accessor);
+  return isSyclType(Ty, SYCLTypeAttr::accessor);
 }
+static bool isSyclLocalAccessorType(QualType Ty) {
+  return isSyclType(Ty, SYCLTypeAttr::local_accessor);
+}
+static bool isAnySyclAccessorType(QualType Ty) {
+  return isSyclAccessorType(Ty) || isSyclLocalAccessorType(Ty);
+}
+
 
 // FIXME: Accessor property lists should be modified to use compile-time
 // properties. Once implemented, this function (and possibly all/most code
@@ -2290,7 +2296,7 @@ class SyclKernelDeclCreator : public SyclKernelFieldHandler {
       // handleAccessorPropertyList. If new classes with property list are
       // added, this code needs to be refactored to call
       // handleAccessorPropertyList for each class which requires it.
-      if (ParamTy.getTypePtr()->isPointerType() && isSyclAccessorType(FieldTy))
+      if (ParamTy.getTypePtr()->isPointerType() && isAnySyclAccessorType(FieldTy))
         handleAccessorType(FieldTy, RecordDecl, FD->getBeginLoc());
     }
     LastParamIndex = ParamIndex;
@@ -2434,7 +2440,7 @@ public:
       // handleAccessorPropertyList. If new classes with property list are
       // added, this code needs to be refactored to call
       // handleAccessorPropertyList for each class which requires it.
-      if (ParamTy.getTypePtr()->isPointerType() && isSyclAccessorType(FieldTy))
+      if (ParamTy.getTypePtr()->isPointerType() && isAnySyclAccessorType(FieldTy))
         handleAccessorType(FieldTy, RecordDecl, BS.getBeginLoc());
     }
     LastParamIndex = ParamIndex;
@@ -2616,12 +2622,10 @@ class ESIMDKernelDiagnostics : public SyclKernelFieldHandler {
   bool IsESIMD = false;
 
   bool handleSpecialType(QualType FieldTy) {
-    const CXXRecordDecl *RecordDecl = FieldTy->getAsCXXRecordDecl();
-
-    if (IsESIMD && !isSyclAccessorType(FieldTy))
+    if (IsESIMD && !isAnySyclAccessorType(FieldTy))
       return SemaRef.Diag(KernelLoc,
                           diag::err_sycl_esimd_not_supported_for_type)
-             << RecordDecl;
+             << FieldTy->getAsCXXRecordDecl();
     return true;
   }
 
@@ -3683,7 +3687,7 @@ public:
   bool handleSyclSpecialType(FieldDecl *FD, QualType FieldTy) final {
     const auto *ClassTy = FieldTy->getAsCXXRecordDecl();
     assert(ClassTy && "Type must be a C++ record type");
-    if (isSyclAccessorType(FieldTy)) {
+    if (isAnySyclAccessorType(FieldTy)) {
       const auto *AccTy =
           cast<ClassTemplateSpecializationDecl>(FieldTy->getAsRecordDecl());
       assert(AccTy->getTemplateArgs().size() >= 2 &&

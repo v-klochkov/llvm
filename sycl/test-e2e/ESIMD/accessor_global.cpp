@@ -36,7 +36,6 @@ bool test(queue Q, uint32_t LocalRange, uint32_t GlobalRange) {
     Q.submit([&](handler &CGH) {
        accessor TmpAcc{TmpBuf, CGH};
        CGH.parallel_for(NDRange, [=](nd_item<1> Item) SYCL_ESIMD_KERNEL {
-//       CGH.parallel_for(NDRange, [=](nd_item<1> Item) {
          uint32_t GID = Item.get_global_id(0);
          uint32_t LID = Item.get_local_id(0);
          if constexpr (TestSubscript) {

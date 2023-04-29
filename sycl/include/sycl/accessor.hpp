@@ -1141,12 +1141,16 @@ protected:
   }
 
   // __init variant used by the device compiler for ESIMD kernels.
-  // TODO In ESIMD accessors usage is limited for now - access range, mem
+  // TODO: In ESIMD accessors usage is limited for now - access range, mem
   // range and offset are not supported.
   void __init_esimd(ConcreteASPtrType Ptr) {
     MData = Ptr;
 #ifdef __ESIMD_FORCE_STATELESS_MEM
-    detail::loop<AdjustedDim>([&, this](size_t I) { getMemoryRange()[I] = 0; });
+    detail::loop<AdjustedDim>([&, this](size_t I) {
+      getOffset()[I] = 0;
+      getAccessRange()[I] = 0;
+      getMemoryRange()[I] = 0;
+    });
 #endif
   }
 
@@ -2505,10 +2509,15 @@ protected:
         [&, this](size_t I) { getSize()[I] = AccessRange[I]; });
   }
 
-  // __init variant used by the device compiler for ESIMD kernels.
-  // TODO In ESIMD accessors usage is limited for now - access range, mem
-  // range and offset are not supported.
-  void __init_esimd(ConcreteASPtrType Ptr) { MData = Ptr; }
+  // __init variant used by the device compiler for ESIMD kernels
+  // using specialization of accessor<..., target::local, ...>.
+  // TODO: Remove this version when 'accessor' class gets support
+  // for range/offset in ESIMD.
+  void __init_esimd(ConcreteASPtrType Ptr) {
+    MData = Ptr;
+    detail::loop<AdjustedDim>(
+        [&, this](size_t I) { getSize()[I] = 0; });
+  }
 
 public:
   // Default constructor for objects later initialized with __init member.
@@ -2753,6 +2762,12 @@ public:
     local_acc::__init(Ptr, AccessRange, range, id);
   }
 
+  // __init needs to be defined within the class not through inheritance.
+  // Map this function to inherited func.
+  void __init_esimd(typename local_acc::ConcreteASPtrType Ptr) {
+    local_acc::__init_esimd(Ptr);
+  }
+
 public:
   // Default constructor for objects later initialized with __init member.
   accessor() {
@@ -2789,18 +2804,18 @@ class __SYCL_EBO __SYCL_SPECIAL_CLASS __SYCL_TYPE(local_accessor) local_accessor
 
   // __init needs to be defined within the class not through inheritance.
   // Map this function to inherited func.
+  //
+  // TODO: Info: This method is intentionally used for ESIMD 'local_accessor',
+  // which means 'local_accessor' is fully support in ESIMD comparing to
+  // limited support of 'accessor' in ESIMD, which uses __init_esimd()
+  // to initialize ESIMD 'accessor' on device.
+  // Remove this TODO comment when ESIMD accessor also uses __init() instead
+  // of __init_esimd().
   void __init(typename local_acc::ConcreteASPtrType Ptr,
               range<local_acc::AdjustedDim> AccessRange,
               range<local_acc::AdjustedDim> range,
               id<local_acc::AdjustedDim> id) {
     local_acc::__init(Ptr, AccessRange, range, id);
-  }
-
-  // __init variant used by the device compiler for ESIMD kernels.
-  // TODO In ESIMD accessors usage is limited for now - access range, mem
-  // range and offset are not supported.
-  void __init_esimd(typename local_acc::ConcreteASPtrType Ptr) {
-    local_acc::__init_esimd(Ptr);
   }
 
 public:

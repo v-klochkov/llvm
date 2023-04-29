@@ -37,11 +37,9 @@ static const char *LegalSYCLFunctions[] = {
     //"^sycl::_V1::accessor<.+>::getNativeImageObj",
     "^sycl::_V1::accessor<.+>::getQualifiedPtr",
     "^sycl::_V1::accessor<.+>::__init_esimd",
-    "^sycl::_V1::local_accessor<.+>::local_accessor",
+    "^sycl::_V1::local_accessor<.+>::.+",
     "^sycl::_V1::local_accessor_base<.+>::local_accessor_base",
-    "^sycl::_V1::local_accessor<.+>::__init_esimd",
     "^sycl::_V1::local_accessor_base<.+>::__init_esimd",
-    "^sycl::_V1::local_accessor<.+>::get_pointer",
     "^sycl::_V1::local_accessor_base<.+>::getQualifiedPtr",
     "^sycl::_V1::local_accessor_base<.+>::operator\\[\\]",
     "^sycl::_V1::ext::oneapi::experimental::printf",
@@ -72,7 +70,9 @@ static const char *LegalSYCLFunctionsInStatelessMode[] = {
     "^sycl::_V1::accessor<.+>::getPointerAdjusted",
     "^sycl::_V1::accessor<.+>::getTotalOffset",
     "^sycl::_V1::accessor<.+>::getLinearIndex",
+    "^sycl::_V1::accessor<.+>::getAccessRange",
     "^sycl::_V1::accessor<.+>::getMemoryRange",
+    "^sycl::_V1::accessor<.+>::getOffset",
     "^sycl::_V1::accessor<.+>::operator\\[\\]"};
 
 namespace {
@@ -104,6 +104,7 @@ public:
     // for invalid calls.
     while (!Worklist.empty()) {
       const Function *F = Worklist.pop_back_val();
+      errs() << "\nFUNCTION: " << *F << "\n\n";
       for (const Instruction &I : instructions(F)) {
         if (auto *CB = dyn_cast<CallBase>(&I)) {
           Function *Callee = CB->getCalledFunction();
@@ -151,6 +152,7 @@ public:
           // Check if function name matches any allowed SYCL function name.
           auto checkLegalFunc = [Name](const char *LegalName) {
             Regex LegalNameRE(LegalName);
+            errs() << "LegalName = " << Name << "\n\n";
             assert(LegalNameRE.isValid() && "invalid function name regex");
             return LegalNameRE.match(Name);
           };
